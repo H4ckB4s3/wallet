@@ -13,7 +13,7 @@ These tools support 3 different DNS record formats for mapping cryptocurrency ad
    - Reference: [IANA Template](https://www.iana.org/assignments/dns-parameters/WALLET/wallet-completed-template)
 
 3. **Type TXT record** - Value: `coin:address`
-   - Reference: [dprofile GitHub](https://github.com/H4ckB4s3/dprofile)
+   - Reference: [dprofile Protocol](https://github.com/H4ckB4s3/dprofile)
 
 ## Features
 
