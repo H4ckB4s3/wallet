@@ -37,7 +37,7 @@ Shakestation (shakestation.io) is a DNS management interface for Handshake domai
 
 ### Adding WALLET Records
 
-1. Log in to your Shakestation account
+1. Log in to your [shakestation.io](https://shakestation.io) account
 2. Select the domain you want to manage
 3. Navigate to the "DNS Records" section
 4. Click "Add Record" and select "WALLET" as the record type (if available)
