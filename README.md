@@ -119,7 +119,7 @@ Type: WALLET
 Name: @ (or subdomain)
 Value: "HNS" "hs1qd42hrldu5yqee58s4d9grqsxqg5qgydytyyg4z"
 
-### Example TXT Record (Format 3) - Works for HNS & ICANN domains, in all registrars
+### Example TXT Record (Format 3) - Works for (on/offchain) HNS & ICANN domains, in all registrars
 Type: TXT
 Name: @ (or subdomain)
 Value: btc:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
