@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Finder</title>
+    <script src="qrcode.min.js"></script>
+    <script src="script.js" defer></script>
+    <style>
+        body, html {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #777;
+            color: #333;
+            font-family: Arial, sans-serif;
+        }
+
+        .search-container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .wallet-selector {
+            display: flex;
+            flex-direction: column;
+            height: 27px;
+            margin-right: 7px;
+            overflow: hidden;
+            align-items: center;
+            position: relative;
+        }
+
+        .wallet-selector img {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            opacity: 0.3;
+            position: absolute;
+        }
+
+        .wallet-selector img.selected {
+            transform: scale(1.2);
+            border: 2px solid #777;
+            opacity: 1;
+            position: relative;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .search-box input {
+            flex-grow: 1;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px 20px;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .search-box .checkmark {
+            position: absolute;
+            right: 10px;
+            color: green;
+            display: none;
+        }
+
+        .wallet-address {
+            margin-top: 10px;
+            color: #fff;
+            word-break: break-all;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: rgba(0,0,0,0.2);
+            white-space: pre-line; /* preserve \n as line breaks */
+        }
+
+        .wallet-address:hover {
+            background-color: rgba(0,0,0,0.3);
+        }
+
+        .qr-code {
+            background: white;
+            padding: 5px;
+            border-radius: 5px;
+            display: none;
+            width: 120px;
+            height: 120px;
+            transition: all 0.3s ease;
+        }
+
+        #address-text {
+            padding-right: 10px;
+        }
+
+        .qr-code.enlarged {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(2);
+            z-index: 1000;
+            width: 120px;
+            height: 120px;
+        }
+
+        .blur-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backdrop-filter: blur(5px);
+            z-index: 999;
+            display: none;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="blur-background" id="blur-background"></div>
+    <div class="search-container">
+        <div class="wallet-selector" id="wallet-selector">
+            <img src="img/aave.png" alt="AAVE" data-prefix="aave:">
+            <img src="img/ada.png" alt="ADA" data-prefix="ada:">
+            <img src="img/algo.png" alt="ALGO" data-prefix="algo:">
+            <img src="img/apt.png" alt="APT" data-prefix="apt:">
+            <img src="img/atom.png" alt="ATOM" data-prefix="atom:">
+            <img src="img/avax.png" alt="AVAX" data-prefix="avax:">
+            <img src="img/bch.png" alt="BCH" data-prefix="bch:">
+            <img src="img/bgb.png" alt="BGB" data-prefix="bgb:">
+            <img src="img/bnb.png" alt="BNB" data-prefix="bnb:">
+            <img src="img/btc.png" alt="BTC" data-prefix="btc:" class="selected">
+            <img src="img/chainlink.png" alt="CHAINLINK" data-prefix="chainlink:">
+            <img src="img/cro.png" alt="CRO" data-prefix="cro:">
+            <img src="img/dai.png" alt="DAI" data-prefix="dai:">
+            <img src="img/doge.png" alt="DOGE" data-prefix="doge:">
+            <img src="img/dot.png" alt="DOT" data-prefix="dot:">
+            <img src="img/ena.png" alt="ENA" data-prefix="ena:">
+            <img src="img/etc.png" alt="ETC" data-prefix="etc:">
+            <img src="img/eth.png" alt="ETH" data-prefix="eth:">
+            <img src="img/fil.png" alt="FIL" data-prefix="fil:">
+            <img src="img/gt.png" alt="GT" data-prefix="gt:">
+            <img src="img/hbar.png" alt="HBAR" data-prefix="hbar:">
+            <img src="img/hns.png" alt="HNS" data-prefix="hns:">
+            <img src="img/hype.png" alt="HYPE" data-prefix="hype:">
+            <img src="img/icp.png" alt="ICP" data-prefix="icp:">
+            <img src="img/jup.png" alt="JUP" data-prefix="jup:">
+            <img src="img/kas.png" alt="KAS" data-prefix="kas:">
+            <img src="img/leo.png" alt="LEO" data-prefix="leo:">
+            <img src="img/ln.png" alt="LN" data-prefix="ln:">
+            <img src="img/ltc.png" alt="LTC" data-prefix="ltc:">
+            <img src="img/mnt.png" alt="MNT" data-prefix="mnt:">
+            <img src="img/near.png" alt="NEAR" data-prefix="near:">
+            <img src="img/okb.png" alt="OKB" data-prefix="okb:">
+            <img src="img/om.png" alt="OM" data-prefix="om:">
+            <img src="img/ondo.png" alt="ONDO" data-prefix="ondo:">
+            <img src="img/op.png" alt="OP" data-prefix="op:">
+            <img src="img/pepe.png" alt="PEPE" data-prefix="pepe:">
+            <img src="img/pi.png" alt="PI" data-prefix="pi:">
+            <img src="img/pol.png" alt="POL" data-prefix="pol:">
+            <img src="img/render.png" alt="RENDER" data-prefix="render:">
+            <img src="img/shib.png" alt="SHIB" data-prefix="shib:">
+            <img src="img/sol.png" alt="SOL" data-prefix="sol:">
+            <img src="img/sui.png" alt="SUI" data-prefix="sui:">
+            <img src="img/tao.png" alt="TAO" data-prefix="tao:">
+            <img src="img/tia.png" alt="TIA" data-prefix="tia:">
+            <img src="img/ton.png" alt="TON" data-prefix="ton:">
+            <img src="img/trx.png" alt="TRX" data-prefix="trx:">
+            <img src="img/uni.png" alt="UNI" data-prefix="uni:">
+            <img src="img/usdc.png" alt="USDC" data-prefix="usdc:">
+            <img src="img/usde.png" alt="USDE" data-prefix="usde:">
+            <img src="img/usdt.png" alt="USDT" data-prefix="usdt:">
+            <img src="img/vet.png" alt="VET" data-prefix="vet:">
+            <img src="img/xlm.png" alt="XLM" data-prefix="xlm:">
+            <img src="img/xmr.png" alt="XMR" data-prefix="xmr:">
+            <img src="img/xrp.png" alt="XRP" data-prefix="xrp:">
+            <img src="img/zec.png" alt="ZEC" data-prefix="zec:">
+        </div>
+        <div class="search-box">
+            <input type="text" id="domain-input" placeholder="Find wallet" autofocus>
+            <span class="checkmark">✔</span>
+        </div>
+    </div>
+    <div class="wallet-address" id="wallet-address">
+        <span id="address-text"></span>
+        <div id="qr-code" class="qr-code"></div>
+    </div>
+    <div class="notification" id="notification">Copied to clipboard!</div>
+
+    <script>
+        const domainInput = document.getElementById('domain-input');
+        const checkmark = document.querySelector('.checkmark');
+        const walletAddress = document.getElementById('wallet-address');
+        const addressText = document.getElementById('address-text');
+        const qrCodeContainer = document.getElementById('qr-code');
+        const notification = document.getElementById('notification');
+        const walletSelector = document.getElementById('wallet-selector');
+        const walletIcons = Array.from(walletSelector.children);
+        const blurBackground = document.getElementById('blur-background');
+        let selectedIndex = 9; // BTC is at index 9
+        let debounceTimeout;
+        let currentAddress = '';
+        let availablePrefixes = new Set();
+
+        async function checkAvailableWallets(domain) {
+            if (!domain) {
+                walletIcons.forEach(img => img.style.display = 'block');
+                return;
+            }
+
+            const url = `https://resolve.shakestation.io/dns-query?name=${encodeURIComponent(domain)}&type=TXT`;
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/dns-json' }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                availablePrefixes.clear();
+
+                if (data.Answer && data.Answer.length > 0) {
+                    data.Answer
+                        .filter(record => record.type === 16)
+                        .forEach(record => {
+                            const cleanRecord = record.data.replace(/"/g, '').trim();
+                            const colonIndex = cleanRecord.indexOf(':');
+                            if (colonIndex > 0) {
+                                const prefix = cleanRecord.substring(0, colonIndex + 1).toLowerCase();
+                                availablePrefixes.add(prefix);
+                            }
+                        });
+                }
+
+                // Check type 262 records for additional prefixes
+                const type262Url = `https://resolve.shakestation.io/dns-query?name=${encodeURIComponent(domain)}&type=262`;
+                const type262Response = await fetch(type262Url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/dns-json' }
+                });
+
+                if (type262Response.ok) {
+                    const type262Data = await type262Response.json();
+                    if (type262Data.Answer && type262Data.Answer.length > 0) {
+                        const rrsets = type262Data.Answer
+                            .filter(rec => rec.type === 262 && typeof rec.data === 'string')
+                            .map(rec => decodeRDataToChunks(rec.data));
+
+                        rrsets.forEach(chunks => {
+                            if (!Array.isArray(chunks) || chunks.length === 0) return;
+                            // Case A: COIN:address
+                            chunks.forEach(s => {
+                                const colonIndex = s.indexOf(':');
+                                if (colonIndex > 0) {
+                                    const prefix = s.substring(0, colonIndex + 1).toLowerCase();
+                                    availablePrefixes.add(prefix);
+                                }
+                            });
+                            // Case B: "COIN" "address"
+                            if (chunks.length >= 2) {
+                                const prefix = chunks[0].toLowerCase() + ':';
+                                availablePrefixes.add(prefix);
+                            }
+                        });
+                    }
+                }
+
+                // Update wallet icon visibility
+                walletIcons.forEach(img => img.style.display = 'none');
+                walletIcons.forEach(img => {
+                    const prefix = img.getAttribute('data-prefix').toLowerCase();
+                    if (availablePrefixes.has(prefix)) {
+                        img.style.display = 'block';
+                    }
+                });
+
+                // If no wallets found, show BTC by default
+                if (availablePrefixes.size === 0) {
+                    walletIcons[9].style.display = 'block'; // Show BTC
+                    selectedIndex = 9;
+                }
+
+                // Ensure selected wallet is visible
+                if (walletIcons[selectedIndex].style.display === 'none') {
+                    selectNextAvailableWallet();
+                }
+
+                updateSelectedWallet();
+            } catch (error) {
+                console.error("Error checking available wallets:", error);
+                walletIcons.forEach(img => img.style.display = 'block');
+            }
+        }
+
+        function selectNextAvailableWallet() {
+            const visibleIndex = walletIcons.findIndex(img => img.style.display !== 'none');
+            if (visibleIndex !== -1) {
+                selectedIndex = visibleIndex;
+            }
+        }
+
+        function updateSelectedWallet() {
+            walletIcons.forEach((img, index) => {
+                img.classList.remove('selected');
+                img.style.top = `${(index - selectedIndex) * 50}px`;
+                img.style.opacity = index === selectedIndex ? 1 : 0.3;
+            });
+
+            if (walletIcons[selectedIndex] && walletIcons[selectedIndex].style.display !== 'none') {
+                walletIcons[selectedIndex].classList.add('selected');
+                fetchTXTRecords(domainInput.value.trim());
+            }
+        }
+
+        function changeWallet() {
+            const visibleIcons = walletIcons.filter(img => img.style.display !== 'none');
+            if (visibleIcons.length === 0) return;
+
+            let newIndex = (selectedIndex + 1) % walletIcons.length;
+            while (newIndex !== selectedIndex && walletIcons[newIndex].style.display === 'none') {
+                newIndex = (newIndex + 1) % walletIcons.length;
+            }
+
+            selectedIndex = newIndex;
+            updateSelectedWallet();
+        }
+
+        walletIcons.forEach(img => img.addEventListener('click', changeWallet));
+        walletSelector.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            changeWallet();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') changeWallet();
+        });
+
+        // Robust decoder for type 262 records
+        function decodeRDataToChunks(data) {
+            if (data.startsWith('\\#')) {
+                const parts = data.slice(2).trim().split(/\s+/);
+                const hex = parts[1] || '';
+                const bytes = [];
+                for (let i = 0; i < hex.length; i += 2) {
+                    bytes.push(parseInt(hex.substr(i, 2), 16));
+                }
+                const chunks = [];
+                for (let i = 0; i < bytes.length;) {
+                    const len = bytes[i++];
+                    if (!Number.isFinite(len) || len < 0 || i + len > bytes.length) break;
+                    const chunkBytes = bytes.slice(i, i + len);
+                    chunks.push(String.fromCharCode(...chunkBytes));
+                    i += len;
+                }
+                return chunks;
+            } else {
+                const chunks = [];
+                const re = /"([^"]*)"/g;
+                let m;
+                while ((m = re.exec(data)) !== null) chunks.push(m[1]);
+                if (chunks.length) return chunks;
+                return [data.replace(/^"(.*)"$/, '$1')];
+            }
+        }
+
+        async function fetchTXTRecords(domain) {
+            if (!domain || !walletIcons[selectedIndex] || walletIcons[selectedIndex].style.display === 'none') {
+                walletAddress.style.display = 'none';
+                qrCodeContainer.innerHTML = '';
+                qrCodeContainer.style.display = 'none';
+                currentAddress = '';
+                return;
+            }
+
+            const selectedCoin = walletIcons[selectedIndex].getAttribute('data-prefix').replace(':', '').toUpperCase();
+            const selectedPrefix = walletIcons[selectedIndex].getAttribute('data-prefix').toLowerCase();
+            const url = `https://resolve.shakestation.io/dns-query?name=${encodeURIComponent(domain)}&type=262`;
+
+            try {
+                // First attempt: Query custom type 262
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/dns-json' }
+                });
+
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+
+                const data = await response.json();
+                if (data.Answer && data.Answer.length > 0) {
+                    const rrsets = data.Answer
+                        .filter(rec => rec.type === 262 && typeof rec.data === 'string')
+                        .map(rec => decodeRDataToChunks(rec.data));
+
+                    const matchesSet = new Set();
+                    rrsets.forEach(chunks => {
+                        if (!Array.isArray(chunks) || chunks.length === 0) return;
+                        // Case A: COIN:address
+                        chunks.forEach(s => {
+                            const u = s.toUpperCase();
+                            if (u.startsWith(selectedCoin + ':')) {
+                                const address = s.slice(selectedCoin.length + 1);
+                                if (address) matchesSet.add(`${selectedCoin}: ${address}`);
+                            }
+                        });
+                        // Case B: "COIN" "address"
+                        if (chunks.length >= 2 && chunks[0].toUpperCase() === selectedCoin) {
+                            const address = chunks.slice(1).join(' ');
+                            if (address) matchesSet.add(`${selectedCoin}: ${address}`);
+                        }
+                    });
+
+                    const matches = Array.from(matchesSet);
+                    if (matches.length > 0) {
+                        domainInput.style.borderColor = 'green';
+                        checkmark.style.display = 'inline';
+                        addressText.textContent = matches.join('\n');
+                        walletAddress.style.display = 'flex';
+                        currentAddress = matches[0].split(': ')[1] || '';
+                        generateQRCode(currentAddress);
+                        return;
+                    }
+                }
+
+                // Fallback: Query standard TXT records (type=16)
+                const fallbackUrl = `https://resolve.shakestation.io/dns-query?name=${encodeURIComponent(domain)}&type=TXT`;
+                const fallbackResponse = await fetch(fallbackUrl, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/dns-json' }
+                });
+
+                if (!fallbackResponse.ok) throw new Error(`HTTP Error: ${fallbackResponse.status} ${fallbackResponse.statusText}`);
+
+                const fallbackData = await fallbackResponse.json();
+                if (fallbackData.Answer && fallbackData.Answer.length > 0) {
+                    const txtRecords = fallbackData.Answer
+                        .filter(record => record.type === 16)
+                        .map(record => record.data.replace(/"/g, '').trim());
+
+                    const wallet = txtRecords.find(record => record.toLowerCase().startsWith(selectedPrefix));
+                    if (wallet) {
+                        const [type, ...addressParts] = wallet.split(':');
+                        currentAddress = addressParts.join(':');
+                        domainInput.style.borderColor = 'green';
+                        checkmark.style.display = 'inline';
+                        addressText.textContent = `${type.toUpperCase()}: ${currentAddress}`;
+                        walletAddress.style.display = 'flex';
+                        generateQRCode(currentAddress);
+                        return;
+                    }
+                }
+
+                // No results from either query
+                domainInput.style.borderColor = '#ddd';
+                checkmark.style.display = 'none';
+                addressText.textContent = 'No wallet found';
+                walletAddress.style.display = 'flex';
+                qrCodeContainer.innerHTML = '';
+                qrCodeContainer.style.display = 'none';
+                currentAddress = '';
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                addressText.textContent = 'Error fetching data';
+                walletAddress.style.display = 'flex';
+                qrCodeContainer.innerHTML = '';
+                qrCodeContainer.style.display = 'none';
+                currentAddress = '';
+            }
+        }
+
+        function generateQRCode(text) {
+            qrCodeContainer.innerHTML = '';
+            qrCodeContainer.style.display = 'none';
+            if (text) {
+                new QRCode(qrCodeContainer, {
+                    text: text,
+                    width: 120,
+                    height: 120,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+                qrCodeContainer.style.display = 'block';
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                notification.style.display = 'block';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
+        function toggleQRCode() {
+            if (currentAddress) {
+                if (qrCodeContainer.classList.contains('enlarged')) {
+                    qrCodeContainer.classList.remove('enlarged');
+                    blurBackground.style.display = 'none';
+                } else {
+                    qrCodeContainer.classList.add('enlarged');
+                    blurBackground.style.display = 'block';
+                }
+            }
+        }
+
+        function debounceFetchTXTRecords() {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(() => {
+                const domain = domainInput.value.trim();
+                checkAvailableWallets(domain);
+                fetchTXTRecords(domain);
+            }, 300);
+        }
+
+        walletAddress.addEventListener('click', (e) => {
+            if (currentAddress) {
+                copyToClipboard(currentAddress);
+            }
+        });
+
+        qrCodeContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleQRCode();
+        });
+
+        blurBackground.addEventListener('click', () => {
+            qrCodeContainer.classList.remove('enlarged');
+            blurBackground.style.display = 'none';
+        });
+
+        domainInput.addEventListener('input', debounceFetchTXTRecords);
+
+        // Initialize with all wallets visible
+        walletIcons.forEach(img => img.style.display = 'block');
+        updateSelectedWallet();
+    </script>
+</body>
+</html>

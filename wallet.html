@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Finder</title>
+    <script src="script.js" defer></script>
+    <style>
+        body, html {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #777;
+            color: #333;
+            font-family: Arial, sans-serif;
+        }
+
+    .search-container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        width: 90%;
+        max-width: 400px;
+        position: relative;
+    }
+
+    .wallet-selector {
+        display: flex;
+        flex-direction: column;
+        height: 27px;
+        margin-right: 7px;
+        overflow: hidden;
+        align-items: center;
+        position: relative;
+    }
+
+    .wallet-selector img {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        border-radius: 5px;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        opacity: 0.3;
+        position: absolute;
+    }
+
+    .wallet-selector img.selected {
+        transform: scale(1.2);
+        border: 2px solid #777;
+        opacity: 1;
+        position: relative;
+    }
+
+    .search-box {
+        display: flex;
+        align-items: center;
+        flex-grow: 1;
+        position: relative;
+    }
+
+    .search-box input {
+        flex-grow: 1;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 10px 20px;
+        outline: none;
+        font-size: 1rem;
+    }
+
+    .search-box .checkmark {
+        position: absolute;
+        right: 10px;
+        color: green;
+        display: none;
+    }
+
+    .wallet-address {
+        margin-top: 10px;
+        color: #fff;
+        word-break: break-all;
+        display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+    white-space: pre-line;  /* preserve \n as line breaks */
+    }
+</style></head>
+<body>
+    <div class="search-container">
+        <div class="wallet-selector" id="wallet-selector">
+            <img src="img/btc.png" alt="BTC" data-prefix="BTC:" class="selected">
+            <img src="img/eth.png" alt="ETH" data-prefix="ETH:">
+            <img src="img/hns.png" alt="HNS" data-prefix="HNS:">
+            <img src="img/xmr.png" alt="XMR" data-prefix="XMR:">
+            <img src="img/zec.png" alt="ZEC" data-prefix="ZEC:">
+        </div>
+        <div class="search-box">
+            <input type="text" id="domain-input" placeholder="Find wallet" autofocus>
+            <span class="checkmark"></span>
+        </div>
+    </div>
+    <div class="wallet-address" id="wallet-address"></div>
+
+<script>
+    const domainInput = document.getElementById('domain-input');
+    const checkmark = document.querySelector('.checkmark');
+    const walletAddress = document.getElementById('wallet-address');
+    const walletSelector = document.getElementById('wallet-selector');
+    const walletIcons = Array.from(walletSelector.children);
+    let selectedIndex = 0;
+    let debounceTimeout;
+
+    function updateSelectedWallet() {
+        walletIcons.forEach((img, index) => {
+            img.classList.remove('selected');
+            img.style.top = `${(index - selectedIndex) * 50}px`;
+            img.style.opacity = index === selectedIndex ? 1 : 0.3;
+        });
+        walletIcons[selectedIndex].classList.add('selected');
+        fetchTXTRecords(domainInput.value.trim());
+    }
+
+    function changeWallet() {
+        selectedIndex = (selectedIndex + 1) % walletIcons.length;
+        updateSelectedWallet();
+    }
+
+    walletIcons.forEach(img => img.addEventListener('click', changeWallet));
+    walletSelector.addEventListener('wheel', (e) => { e.preventDefault(); changeWallet(); });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') changeWallet();
+    });
+
+    // --- Robust decoder: handles hex-encoded unknown type (\# len hex) with multiple char-strings,
+    //     and also plain quoted strings if ever returned.
+    function decodeRDataToChunks(data) {
+        // Return an array of character-strings (chunks)
+        if (data.startsWith('\\#')) {
+            // format: \# <LEN> <HEX...>
+            const parts = data.slice(2).trim().split(/\s+/);
+            const hex = parts[1] || '';
+            const bytes = [];
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes.push(parseInt(hex.substr(i, 2), 16));
+            }
+            const chunks = [];
+            for (let i = 0; i < bytes.length;) {
+                const len = bytes[i++];
+                if (!Number.isFinite(len) || len < 0 || i + len > bytes.length) break; // safety
+                const chunkBytes = bytes.slice(i, i + len);
+                chunks.push(String.fromCharCode(...chunkBytes));
+                i += len;
+            }
+            return chunks;
+        } else {
+            // Plain JSON presentation (e.g., "A" "B" or "A:B")
+            const chunks = [];
+            const re = /"([^"]*)"/g;
+            let m;
+            while ((m = re.exec(data)) !== null) chunks.push(m[1]);
+            if (chunks.length) return chunks;
+            // Fallback: treat as a single unquoted string
+            return [data.replace(/^"(.*)"$/, '$1')];
+        }
+    }
+
+async function fetchTXTRecords(domain) {
+    if (!domain) {
+        walletAddress.style.display = 'none';
+        return;
+    }
+
+    const selectedCoin = walletIcons[selectedIndex].getAttribute('data-prefix').replace(':', '').toUpperCase();
+    const selectedPrefix = walletIcons[selectedIndex].getAttribute('data-prefix').toLowerCase();
+    const url = `https://resolve.shakestation.io/dns-query?name=${encodeURIComponent(domain)}&type=262`;
+
+    try {
+        // First attempt: Query custom type 262
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Accept': 'application/dns-json' }
+        });
+
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+
+        const data = await response.json();
+        if (data.Answer && data.Answer.length > 0) {
+            // Decode every RDATA into an array of TXT chunks
+            const rrsets = data.Answer
+                .filter(rec => rec.type === 262 && typeof rec.data === 'string')
+                .map(rec => decodeRDataToChunks(rec.data));
+
+            const matchesSet = new Set();
+            rrsets.forEach(chunks => {
+                if (!Array.isArray(chunks) || chunks.length === 0) return;
+                // Case A: COIN:address (could be in any chunk)
+                chunks.forEach(s => {
+                    const u = s.toUpperCase();
+                    if (u.startsWith(selectedCoin + ':')) {
+                        const address = s.slice(selectedCoin.length + 1);
+                        if (address) matchesSet.add(`${selectedCoin}: ${address}`);
+                    }
+                });
+                // Case B: "COIN" "address" (first chunk = coin, remaining = address parts)
+                if (chunks.length >= 2 && chunks[0].toUpperCase() === selectedCoin) {
+                    const address = chunks.slice(1).join(' ');
+                    if (address) matchesSet.add(`${selectedCoin}: ${address}`);
+                }
+            });
+
+            const matches = Array.from(matchesSet);
+            if (matches.length > 0) {
+                domainInput.style.borderColor = 'green';
+                checkmark.style.display = 'inline';
+                walletAddress.textContent = matches.join('\n'); // one per line
+                walletAddress.style.display = 'block';
+                return;
+            }
+        }
+
+        // Fallback: Query standard TXT records (type=16)
+        const fallbackUrl = `https://resolve.shakestation.io/dns-query?name=${encodeURIComponent(domain)}&type=TXT`;
+        const fallbackResponse = await fetch(fallbackUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/dns-json' }
+        });
+
+        if (!fallbackResponse.ok) throw new Error(`HTTP Error: ${fallbackResponse.status} ${fallbackResponse.statusText}`);
+
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData.Answer && fallbackData.Answer.length > 0) {
+            const txtRecords = fallbackData.Answer
+                .filter(record => record.type === 16)
+                .map(record => record.data.replace(/"/g, '').trim());
+
+            const wallet = txtRecords.find(record => record.toLowerCase().startsWith(selectedPrefix));
+            if (wallet) {
+                const [type, ...addressParts] = wallet.split(':');
+                const currentAddress = addressParts.join(':');
+                domainInput.style.borderColor = 'green';
+                checkmark.style.display = 'inline';
+                walletAddress.textContent = `${type.toUpperCase()}: ${currentAddress}`;
+                walletAddress.style.display = 'block';
+                return;
+            }
+        }
+
+        // No results from either query
+        domainInput.style.borderColor = '#ddd';
+        checkmark.style.display = 'none';
+        walletAddress.textContent = 'No wallet found';
+        walletAddress.style.display = 'block';
+    } catch (error) {
+        console.error("Fetch Error:", error);
+        walletAddress.textContent = 'Error fetching data';
+        walletAddress.style.display = 'block';
+    }
+}
+
+    function debounceFetchTXTRecords() {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            fetchTXTRecords(domainInput.value.trim());
+        }, 300);
+    }
+
+    domainInput.addEventListener('input', debounceFetchTXTRecords);
+    updateSelectedWallet();
+</script>
+
+
+</body>
+</html>
+
+
