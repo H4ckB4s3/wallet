@@ -126,7 +126,7 @@ Value: btc:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
 
 ## Verification
 
-After adding your records, use the Wallet Checker tool to verify they're properly configured and accessible.
+After adding your records, use the [Wallet Checker](http://wallet.hackbase.hns.to/) tool to verify they're properly configured and accessible.
 
 ## Resources
 
