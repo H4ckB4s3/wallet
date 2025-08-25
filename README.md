@@ -112,17 +112,17 @@ Use these standard coin codes in your records:
 ### Example WALLET Record (Format 1) - 
 Type: WALLET
 Name: @ (or subdomain)
-Value: ETH:0x742d35Cc6634C0532925a3b844Bc454e4438f44e
+Value: HNS:hs1qlh9grk2zvyz66d4t8vhge9k3nsj3hxm96e2mgf
 
 ### Example WALLET Record (Format 2)
 Type: WALLET
 Name: @ (or subdomain)
-Value: "HNS" "hs1qd42hrldu5yqee58s4d9grqsxqg5qgydytyyg4z"
+Value: "LN" "lnurl1dp68gurn8ghj7ampd3kx2ar0veekzar0wd5xjtnrdakj7tnhv4kxctttdehhwm30d3h82unvwqhksmnnvfex76m9wggtgklf"
 
 ### Example TXT Record (Format 3) - Works for (on/offchain) HNS & ICANN domains, in all registrars
 Type: TXT
 Name: @ (or subdomain)
-Value: btc:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
+Value: btc:1QFfuUZu12tmTPkKTx3SbFJLQNxoWvz8ig
 
 ## Verification
 
