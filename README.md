@@ -78,7 +78,7 @@ Use these standard coin codes in your records:
 - JUP (Jupiter): `jup`
 - KAS (Kaspa): `kas`
 - LEO (UNUS SED LEO): `leo`
-- LN: `ln`
+- LN (Lightning Network): `ln`
 - LTC (Litecoin): `ltc`
 - MNT (Mantle): `mnt`
 - NEAR: `near`
